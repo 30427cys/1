@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>혈관 평활근 조절 및 SVR 변화 시뮬레이터</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-orange: #f59e0b;
+            --accent-purple: #8b5cf6;
+            --accent-blue: #3b82f6;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        body {
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #60a5fa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* 왼쪽 컨트롤 패널 */
+        .control-panel {
+            background: var(--panel-bg);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        h2 { font-size: 1.2rem; margin-bottom: 15px; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        button {
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-no { background-color: var(--accent-blue); color: white; }
+        .btn-normal { background-color: var(--accent-green); color: white; }
+        .btn-stress { background-color: var(--accent-orange); color: white; }
+        .btn-smoking { background-color: #78350f; color: white; }
+        .btn-aging { background-color: var(--accent-purple); color: white; }
+        
+        button:hover { transform: translateY(-2px); filter: brightness(1.2); }
+
+        .info-card {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        /* 오른쪽 시각화 패널 */
+        .view-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .visualizer {
+            background: var(--panel-bg);
+            padding: 30px;
+            border-radius: 16px;
+            height: 350px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* 혈관 애니메이션 */
+        .vessel-container {
+            width: 100%;
+            height: 180px;
+            background: #020617;
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .vessel-wall {
+            position: absolute;
+            width: 100%;
+            height: 45px;
+            background: linear-gradient(to bottom, #991b1b, #7f1d1d);
+            transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .wall-top { top: 0; border-bottom: 2px solid #ef4444; }
+        .wall-bottom { bottom: 0; border-top: 2px solid #ef4444; }
+
+        .blood-flow {
+            width: 100%;
+            height: 40px;
+            background: repeating-linear-gradient(90deg, #ef4444, #ef4444 20px, #b91c1c 20px, #b91c1c 40px);
+            animation: flow 1s linear infinite;
+            transition: all 1s ease;
+        }
+
+        @keyframes flow {
+            from { background-position: 0 0; }
+            to { background-position: 80px 0; }
+        }
+
+        /* 대시보드 */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .stat-label { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 8px; }
+        .stat-value { font-size: 1.5rem; font-weight: 800; transition: color 0.5s; }
+
+        /* 하단 결론 섹션 */
+        .conclusion-section {
+            grid-column: span 2;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 30px;
+            border-radius: 16px;
+            margin-top: 10px;
+            border: 1px solid #334155;
+        }
+
+        .conclusion-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .conclusion-item h4 { margin-top: 0; color: var(--accent-blue); font-size: 1.1rem; }
+        .conclusion-item p { font-size: 0.95rem; line-height: 1.6; color: var(--text-dim); }
+
+        .highlight { color: #fff; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>혈관 평활근 조절 및 SVR 변화 시뮬레이터</h1>
+        <p style="color: var(--text-dim);">Vascular Smooth Muscle & Systemic Vascular Resistance (SVR) Simulator</p>
+    </header>
+
+    <div class="main-layout">
+        <div class="control-panel">
+            <h2>🧪 자극 조작 (Stimuli)</h2>
+            <div class="btn-group">
+                <button class="btn-no" onclick="update('exercise')">🏃 NO 증가 (유산소 운동)</button>
+                <button class="btn-normal" onclick="update('normal')">🌿 정상 상태 (안정기)</button>
+                <button class="btn-stress" onclick="update('stress')">⚡ 스트레스 (교감신경 활성)</button>
+                <button class="btn-smoking" onclick="update('smoking')">🚬 내피세포 손상 (흡연)</button>
+                <button class="btn-aging" onclick="update('aging')">👵 혈관 노화 (동맥경화)</button>
+            </div>
+
+            <h2>🔍 용어 사전</h2>
+            <div class="info-card" id="term-info">
+                <strong>전신혈관저항 (SVR):</strong> 혈액이 전신 혈관을 흐를 때 받는 저항입니다. 혈관 평활근이 수축하여 <strong>지름이 좁아질수록 저항은 급격히 증가</strong>하며 혈압을 높입니다.
+            </div>
+        </div>
+
+        <div class="view-panel">
+            <div class="visualizer">
+                <div style="margin-bottom: 20px; font-weight: bold; color: var(--accent-blue);" id="current-status">실시간 혈관 상태: 정상</div>
+                <div class="vessel-container">
+                    <div class="vessel-wall wall-top" id="wall-top"></div>
+                    <div class="blood-flow" id="flow"></div>
+                    <div class="vessel-wall wall-bottom" id="wall-bottom"></div>
+                </div>
+                <p style="margin-top: 20px; font-size: 0.9rem; text-align: center;" id="mechanism-desc">
+                    내피세포에서 분비된 일산화질소(NO)가 평활근을 적절히 이완시켜 정상 지름을 유지합니다.
+                </p>
+            </div>
+
+            <div class="dashboard">
+                <div class="stat-card">
+                    <div class="stat-label">혈관 유효 지름</div>
+                    <div class="stat-value" id="val-dia" style="color: var(--accent-green);">100%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">전신혈관저항 (SVR)</div>
+                    <div class="stat-value" id="val-svr" style="color: var(--accent-green);">정상</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">혈압(BP) 변화 추세</div>
+                    <div class="stat-value" id="val-bp" style="color: var(--accent-green);">안정 (-)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="conclusion-section">
+            <h2 style="border: none; color: #fff;">🔎 탐구 결론 (Research Conclusion)</h2>
+            <div class="conclusion-grid">
+                <div class="conclusion-item">
+                    <h4>1. 고혈압 유발 메커니즘</h4>
+                    <p>스트레스나 내피세포 손상으로 인해 <span class="highlight">혈관 평활근이 수축</span>하면 혈관 지름이 감소합니다. 이는 <span class="highlight">전신혈관저항(SVR)의 급격한 상승</span>을 야기하며, 결국 혈압을 높이는 핵심 기전이 됩니다.</p>
+                </div>
+                <div class="conclusion-item">
+                    <h4>2. 일산화질소(NO)의 역할</h4>
+                    <p>운동 등을 통해 분비되는 <span class="highlight">일산화질소(NO)</span>는 평활근을 이완시켜 혈관을 확장합니다. 이는 SVR을 낮추어 <span class="highlight">혈압을 능동적으로 조절</span>하는 중요한 생리학적 보호 장치임을 확인했습니다.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function update(mode) {
+            const wTop = document.getElementById('wall-top');
+            const wBottom = document.getElementById('wall-bottom');
+            const flow = document.getElementById('flow');
+            
+            const status = document.getElementById('current-status');
+            const desc = document.getElementById('mechanism-desc');
+            
+            const vDia = document.getElementById('val-dia');
+            const vSvr = document.getElementById('val-svr');
+            const vBp = document.getElementById('val-bp');
+
+            if(mode === 'exercise') {
+                wTop.style.height = '25px'; wBottom.style.height = '25px';
+                flow.style.height = '60px'; flow.style.animationDuration = '1.5s';
+                status.innerText = "실시간 혈관 상태: 혈관 확장 (운동/건강)";
+                status.style.color = "#60a5fa";
+                desc.innerHTML = "<strong>운동 효과:</strong> 혈류 마찰 증가로 내피세포가 자극되어 <strong>일산화질소(NO) 분비가 극대화</strong>됩니다. 평활근이 충분히 이완되어 SVR이 감소합니다.";
+                vDia.innerText = "125%"; vDia.style.color = "#60a5fa";
+                vSvr.innerText = "낮음 (↓)"; vSvr.style.color = "#60a5fa";
+                vBp.innerText = "최적화 (Optimized)"; vBp.style.color = "#60a5fa";
+            }
+            else if(mode === 'normal') {
+                wTop.style.height = '45px'; wBottom.style.height = '45px';
+                flow.style.height = '40px'; flow.style.animationDuration = '1.0s';
+                status.innerText = "실시간 혈관 상태: 정상";
+                status.style.color = "var(--accent-green)";
+                desc.innerText = "내피세포에서 분비된 일산화질소(NO)가 평활근을 적절히 이완시켜 정상 지름을 유지합니다.";
+                vDia.innerText = "100%"; vDia.style.color = "var(--accent-green)";
+                vSvr.innerText = "정상"; vSvr.style.color = "var(--accent-green)";
+                vBp.innerText = "안정 (-)"; vBp.style.color = "var(--accent-green)";
+            }
+            else if(mode === 'stress') {
+                wTop.style.height = '70px'; wBottom.style.height = '70px';
+                flow.style.height = '15px'; flow.style.animationDuration = '0.3s';
+                status.innerText = "실시간 혈관 상태: 급격한 수축 (교감신경 활성)";
+                status.style.color = "var(--accent-red)";
+                desc.innerHTML = "<strong>교감신경 활성:</strong> 노르에피네프린이 평활근의 <strong>&alpha;-아드레날린 수용체</strong>를 자극하여 강력한 수축을 유발합니다. SVR이 폭발적으로 증가합니다.";
+                vDia.innerText = "40%"; vDia.style.color = "var(--accent-red)";
+                vSvr.innerText = "매우 높음 (↑↑↑)"; vSvr.style.color = "var(--accent-red)";
+                vBp.innerText = "급상승 (↑↑)"; vBp.style.color = "var(--accent-red)";
+            }
+            else if(mode === 'smoking') {
+                wTop.style.height = '60px'; wBottom.style.height = '60px';
+                flow.style.height = '25px'; flow.style.animationDuration = '0.5s';
+                status.innerText = "실시간 혈관 상태: 이완 실패 (내피세포 손상)";
+                status.style.color = "var(--accent-orange)";
+                desc.innerHTML = "<strong>내피세포 기능 저하:</strong> 흡연 등으로 내피세포가 손상되어 <strong>NO 생성 능력을 상실</strong>했습니다. 평활근이 이완되지 못하고 수축된 상태로 유지됩니다.";
+                vDia.innerText = "65%"; vDia.style.color = "var(--accent-orange)";
+                vSvr.innerText = "지속적 높음 (↑↑)"; vSvr.style.color = "var(--accent-orange)";
+                vBp.innerText = "만성 상승 (↑)"; vBp.style.color = "var(--accent-orange)";
+            }
+            else if(mode === 'aging') {
+                wTop.style.height = '55px'; wBottom.style.height = '55px';
+                flow.style.height = '30px'; flow.style.animationDuration = '0.7s';
+                status.innerText = "실시간 혈관 상태: 유연성 상실 (동맥경화)";
+                status.style.color = "var(--accent-purple)";
+                desc.innerHTML = "<strong>물리적 변성:</strong> 혈관벽이 딱딱해져 평활근 조절에 따른 지름 변화가 원활하지 않습니다. 기본 저항값이 높아진 상태입니다.";
+                vDia.innerText = "80% (고정)"; vDia.style.color = "var(--accent-purple)";
+                vSvr.innerText = "기저 저항 높음"; vSvr.style.color = "var(--accent-purple)";
+                vBp.innerText = "기저 혈압 상승"; vBp.style.color = "var(--accent-purple)";
+            }
+        }
+    </script>
+</body>
+</html>
